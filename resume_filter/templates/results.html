@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Resume Matching Results</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .summary {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+        }
+        .result-card {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            position: relative;
+        }
+        .match-percentage {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .match-high {
+            background-color: #4CAF50;
+        }
+        .match-medium {
+            background-color: #FFC107;
+        }
+        .match-low {
+            background-color: #F44336;
+        }
+        .card-title {
+            margin-top: 0;
+            margin-bottom: 15px;
+            padding-right: 80px;
+        }
+        .info-section {
+            margin-bottom: 10px;
+        }
+        .info-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .skill-tag {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #e9ecef;
+            border-radius: 3px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+        .skill-present {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .skill-missing {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .certificate-tag {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #cce5ff;
+            color: #004085;
+            border-radius: 3px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+        .email-button {
+            background-color: #007bff;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .email-button:hover {
+            background-color: #0069d9;
+        }
+        .email-button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .email-status {
+            display: inline-block;
+            margin-left: 10px;
+            font-style: italic;
+            color: #28a745;
+        }
+        .back-button {
+            display: block;
+            margin: 20px auto;
+            background-color: #6c757d;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 16px;
+            text-align: center;
+            text-decoration: none;
+            width: 150px;
+        }
+        .back-button:hover {
+            background-color: #5a6268;
+        }
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        .flash-message {
+            padding: 10px;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            margin-bottom: 10px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Resume Matching Results</h1>
+        
+        <div class="flash-messages">
+            {% for message in get_flashed_messages() %}
+                <div class="flash-message">{{ message }}</div>
+            {% endfor %}
+        </div>
+        
+        {% if results %}
+            <div class="summary">
+                <h3>Summary</h3>
+                <p><strong>Total Candidates Selected:</strong> {{ results|length }}</p>
+                {% if employees_needed is defined %}
+                <p><strong>Employees Needed:</strong> {{ employees_needed }}</p>
+                {% endif %}
+                {% if min_percentage is defined %}
+                <p><strong>Minimum Match Percentage:</strong> {{ min_percentage }}%</p>
+                {% endif %}
+            </div>
+            
+            {% for result in results %}
+                <div class="result-card">
+                    <div class="match-percentage {% if result.match_percentage >= 75 %}match-high{% elif result.match_percentage >= 50 %}match-medium{% else %}match-low{% endif %}">
+                        {{ result.match_percentage }}%
+                    </div>
+                    
+                    <h2 class="card-title">{{ result.filename }}</h2>
+                    
+                    {% if result.email %}
+                        <div class="info-section">
+                            <div class="info-title">Email:</div>
+                            <div>
+                                {{ result.email }}
+                                <form action="{{ url_for('send_email', candidate_index=loop.index0) }}" method="post" style="display: inline;">
+                                    <button type="submit" class="email-button" {% if result.email_sent %}disabled{% endif %}>
+                                        Send Email
+                                    </button>
+                                    {% if result.email_sent %}
+                                    <span class="email-status">Email Sent ✓</span>
+                                    {% endif %}
+                                </form>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="info-section">
+                            <div class="info-title">Email:</div>
+                            <div>No email found in resume</div>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="info-section">
+                        <div class="info-title">Skills:</div>
+                        <div>
+                            {% for skill in required_skills %}
+                                <span class="skill-tag {% if skill in result.skills %}skill-present{% else %}skill-missing{% endif %}">
+                                    {{ skill }}
+                                    {% if skill in result.skills %}✓{% else %}✗{% endif %}
+                                </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="info-section">
+                        <div class="info-title">Certificates ({{ result.certificates|length }}):</div>
+                        {% if result.certificates %}
+                            <div>
+                                {% for cert in result.certificates %}
+                                    <span class="certificate-tag">{{ cert }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div>No certificates found</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="info-section">
+                        <div class="info-title">Experience:</div>
+                        <div>{{ result.experience_years }} years</div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No candidates matched the selection criteria. Please try again with different parameters.</p>
+        {% endif %}
+        
+        <a href="{{ url_for('index') }}" class="back-button">Back to Upload</a>
+    </div>
+</body>
+</html>
